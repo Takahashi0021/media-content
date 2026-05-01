@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+
 	"media-content-api/config"
 	"media-content-api/models"
 	"media-content-api/routes"
@@ -10,21 +12,25 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("No .env file found, using environment variables")
+	if _, err := os.Stat(".env"); err == nil {
+		if err := godotenv.Load(); err != nil {
+			log.Println("Warning: Error loading .env file")
+		}
 	}
 
 	config.ConnectDatabase()
 
-	err = config.DB.AutoMigrate(&models.Movie{}, &models.Series{}, &models.User{})
-	if err != nil {
-		panic("Failed to migrate database: " + err.Error())
+	if err := config.DB.AutoMigrate(&models.User{}, &models.Movie{}, &models.Series{}); err != nil {
+		log.Printf("Warning: Auto migration error: %v", err)
 	}
-	log.Println("Database migration completed - tables created")
 
 	router := routes.SetupRouter()
 
-	log.Println("Server starting on port 8080...")
-	router.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server starting on port %s", port)
+	router.Run(":" + port)
 }
