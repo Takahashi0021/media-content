@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 RUN apk add --no-cache git
 
@@ -20,7 +20,7 @@ WORKDIR /root/
 
 COPY --from=builder /app/main .
 
-COPY --from=builder /app/database/migrations ./database/migrations
+COPY --from=builder /app/frontend ./frontend
 
 EXPOSE 8080
 

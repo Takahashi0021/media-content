@@ -51,7 +51,7 @@ func NewOMDbService() *OMDbService {
 
 	return &OMDbService{
 		client:  client,
-		apiKey:  os.Getenv("OMDB_API_KEY"),
+		apiKey:  os.Getenv("a1c60b23"),
 		baseURL: "http://www.omdbapi.com",
 	}
 }

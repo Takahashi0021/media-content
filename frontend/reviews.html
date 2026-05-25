@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отзывы - Media Content</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="/js/api.js"></script>
+    <script>
+        let currentType = 'movie';
+        let currentId = null;
+
+        function checkAuth() {
+            if (!api.token) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function loadReviews() {
+            if (!checkAuth()) return;
+
+            try {
+                const user = await api.getCurrentUser();
+                const movies = await api.getMovies();
+                const series = await api.getSeries();
+
+                document.getElementById('app').innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>✏️ Отзывы</h1>
+                            <div class="nav">
+                                <a href="/index.html">Главная</a>
+                                <a href="/movies.html">Фильмы</a>
+                                <a href="/series.html">Сериалы</a>
+                                <a href="/favorites.html">Избранное</a>
+                                <a href="/reviews.html" class="active">Отзывы</a>
+                                <a href="/external.html">Поиск</a>
+                            </div>
+                            <div>
+                                <span style="margin-right: 15px;">👤 ${user.user.username}</span>
+                                <button class="logout-btn" onclick="logout()">Выйти</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>🔍 Выбрать</h3>
+                            <div class="form-group">
+                                <label>Тип:</label>
+                                <select id="typeSelect" onchange="onTypeChange()">
+                                    <option value="movie">Фильм</option>
+                                    <option value="series">Сериал</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>${currentType === 'movie' ? 'Фильм:' : 'Сериал:'}</label>
+                                <select id="itemSelect">
+                                    <option value="">Выберите...</option>
+                                    ${(currentType === 'movie' ? movies : series).map(item => `
+                                        <option value="${item.id}">${item.title}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <button onclick="loadItemReviews()">Показать отзывы</button>
+                        </div>
+
+                        <div id="reviewsContainer"></div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        function onTypeChange() {
+            currentType = document.getElementById('typeSelect').value;
+            currentId = null;
+            loadReviews();
+        }
+
+        async function loadItemReviews() {
+            const itemId = parseInt(document.getElementById('itemSelect').value);
+            if (!itemId) {
+                showMessage('Выберите элемент', 'error');
+                return;
+            }
+
+            currentId = itemId;
+
+            const reviewsData = await api.getReviews(
+                currentType === 'movie' ? currentId : null,
+                currentType === 'series' ? currentId : null
+            );
+            
+            const avgRating = await api.getAverageRating(
+                currentType === 'movie' ? currentId : null,
+                currentType === 'series' ? currentId : null
+            );
+
+            const container = document.getElementById('reviewsContainer');
+            container.innerHTML = `
+                <div class="card">
+                    <h3>⭐ Средний рейтинг: ${avgRating.average_rating} (${avgRating.total_reviews} отзывов)</h3>
+                </div>
+
+                <div class="card">
+                    <h3>✏️ Написать отзыв</h3>
+                    <form onsubmit="addReview(event)">
+                        <div class="form-group">
+                            <input type="number" id="rating" placeholder="Оценка (1-10)" min="1" max="10" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="comment" placeholder="Ваш комментарий" rows="3"></textarea>
+                        </div>
+                        <button type="submit">Отправить отзыв</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>📝 Все отзывы</h3>
+                    <div id="reviewsList"></div>
+                </div>
+            `;
+
+            renderReviews(reviewsData.data);
+        }
+
+        function renderReviews(reviews) {
+            const container = document.getElementById('reviewsList');
+            
+            if (!reviews || reviews.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding:50px;">Нет отзывов</p>';
+                return;
+            }
+
+            container.innerHTML = reviews.map(r => `
+                <div class="movie-card" style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <strong>👤 ${r.user?.username || 'User'}</strong>
+                        <span class="rating">⭐ ${r.rating}/10</span>
+                    </div>
+                    <p style="margin-top: 10px;">${r.comment || 'Нет комментария'}</p>
+                    <div style="margin-top: 10px;">
+                        <button onclick="likeReview(${r.id})">👍 ${r.likes || 0} лайков</button>
+                        <button class="danger" onclick="deleteReview(${r.id})">🗑️ Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addReview(event) {
+            event.preventDefault();
+
+            const rating = parseInt(document.getElementById('rating').value);
+            const comment = document.getElementById('comment').value;
+
+            const review = { rating, comment };
+            if (currentType === 'movie') {
+                review.movie_id = currentId;
+            } else {
+                review.series_id = currentId;
+            }
+
+            try {
+                await api.createReview(review);
+                showMessage('Отзыв добавлен!', 'success');
+                loadItemReviews();
+                document.getElementById('rating').value = '';
+                document.getElementById('comment').value = '';
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function likeReview(id) {
+            try {
+                await api.likeReview(id);
+                showMessage('Лайк добавлен!', 'success');
+                loadItemReviews();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function deleteReview(id) {
+            if (confirm('Удалить отзыв?')) {
+                try {
+                    await api.deleteReview(id);
+                    showMessage('Отзыв удалён', 'success');
+                    loadItemReviews();
+                } catch (error) {
+                    showMessage(error.message, 'error');
+                }
+            }
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+            msgDiv.textContent = msg;
+            document.body.insertBefore(msgDiv, document.body.firstChild);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+
+        function logout() {
+            api.setToken(null);
+            window.location.href = '/login.html';
+        }
+
+        loadReviews();
+    </script>
+</body>
+</html>

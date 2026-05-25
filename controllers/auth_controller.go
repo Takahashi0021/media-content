@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"net/http"
-
 	"media-content-api/config"
 	"media-content-api/models"
 	"media-content-api/utils"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -104,6 +103,7 @@ func GetCurrentUser(c *gin.Context) {
 	}
 
 	var user models.User
+	// Исправлено: ищем по ID из токена
 	if err := config.DB.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return

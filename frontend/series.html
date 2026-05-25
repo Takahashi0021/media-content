@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сериалы - Media Content</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="/js/api.js"></script>
+    <script>
+        let currentPage = 1;
+        let seriesPerPage = 12;
+
+        function checkAuth() {
+            if (!api.token) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function loadSeries() {
+            if (!checkAuth()) return;
+
+            try {
+                const user = await api.getCurrentUser();
+                const allSeries = await api.getSeries();
+                
+                const start = (currentPage - 1) * seriesPerPage;
+                const paginatedSeries = allSeries.slice(start, start + seriesPerPage);
+                const totalPages = Math.ceil(allSeries.length / seriesPerPage);
+
+                document.getElementById('app').innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>📺 Сериалы</h1>
+                            <div class="nav">
+                                <a href="/index.html">Главная</a>
+                                <a href="/movies.html">Фильмы</a>
+                                <a href="/series.html" class="active">Сериалы</a>
+                                <a href="/favorites.html">Избранное</a>
+                                <a href="/reviews.html">Отзывы</a>
+                                <a href="/external.html">Поиск</a>
+                            </div>
+                            <div>
+                                <span style="margin-right: 15px;">👤 ${user.user.username}</span>
+                                <button class="logout-btn" onclick="logout()">Выйти</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>➕ Добавить сериал</h3>
+                            <form onsubmit="addSeries(event)">
+                                <div class="form-group">
+                                    <input type="text" id="title" placeholder="Название" required>
+                                </div>
+                                <div class="form-group">
+                                    <textarea id="description" placeholder="Описание" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <input type="number" id="releaseYear" placeholder="Год выпуска">
+                                </div>
+                                <div class="form-group">
+                                    <input type="number" id="seasons" placeholder="Количество сезонов">
+                                </div>
+                                <div class="form-group">
+                                    <input type="number" id="episodes" placeholder="Количество эпизодов">
+                                </div>
+                                <div class="form-group">
+                                    <input type="number" id="rating" placeholder="Рейтинг" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <input type="text" id="genre" placeholder="Жанр">
+                                </div>
+                                <div class="form-group">
+                                    <input type="text" id="creator" placeholder="Создатель">
+                                </div>
+                                <button type="submit">Добавить сериал</button>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <h3>📺 Список сериалов</h3>
+                            <div id="seriesGrid" class="grid"></div>
+                            <div class="pagination">
+                                <button onclick="prevPage()" ${currentPage === 1 ? 'disabled' : ''}>◀ Назад</button>
+                                <span>Страница ${currentPage} из ${totalPages}</span>
+                                <button onclick="nextPage()" ${currentPage === totalPages ? 'disabled' : ''}>Вперед ▶</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                renderSeries(paginatedSeries);
+            } catch (error) {
+                console.error('Error loading series:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        function renderSeries(series) {
+            const grid = document.getElementById('seriesGrid');
+            if (series.length === 0) {
+                grid.innerHTML = '<p style="text-align:center; padding:50px;">Нет сериалов</p>';
+                return;
+            }
+
+            grid.innerHTML = series.map(s => `
+                <div class="series-card">
+                    <h4>${s.title}</h4>
+                    <p class="rating">⭐ ${s.rating || 'N/A'}</p>
+                    <p>📅 ${s.release_year || 'Н/Д'}</p>
+                    <p>📺 ${s.seasons || 0} сезонов, ${s.episodes || 0} эпизодов</p>
+                    <p>🎭 ${s.genre || 'Н/Д'}</p>
+                    <div class="actions">
+                        <button onclick="addToFavorites(${s.id}, 'series')">❤️ В избранное</button>
+                        <button onclick="addReview(${s.id}, 'series')">✏️ Отзыв</button>
+                        <button class="danger" onclick="deleteSeries(${s.id})">🗑️ Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addSeries(event) {
+            event.preventDefault();
+
+            const series = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                release_year: parseInt(document.getElementById('releaseYear').value) || 0,
+                seasons: parseInt(document.getElementById('seasons').value) || 0,
+                episodes: parseInt(document.getElementById('episodes').value) || 0,
+                rating: parseFloat(document.getElementById('rating').value) || 0,
+                genre: document.getElementById('genre').value,
+                creator: document.getElementById('creator').value
+            };
+
+            try {
+                await api.createSeries(series);
+                showMessage('Сериал добавлен!', 'success');
+                loadSeries();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function deleteSeries(id) {
+            if (confirm('Удалить этот сериал?')) {
+                try {
+                    await api.deleteSeries(id);
+                    showMessage('Сериал удалён', 'success');
+                    loadSeries();
+                } catch (error) {
+                    showMessage(error.message, 'error');
+                }
+            }
+        }
+
+        async function addToFavorites(id, type) {
+            try {
+                if (type === 'movie') {
+                    await api.addFavorite(id, null);
+                } else {
+                    await api.addFavorite(null, id);
+                }
+                showMessage('Добавлено в избранное!', 'success');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function addReview(id, type) {
+            const rating = prompt('Ваша оценка (1-10):');
+            const comment = prompt('Ваш комментарий:');
+            
+            if (rating) {
+                const review = {
+                    rating: parseInt(rating),
+                    comment: comment
+                };
+                if (type === 'movie') {
+                    review.movie_id = id;
+                } else {
+                    review.series_id = id;
+                }
+                api.createReview(review).then(() => {
+                    showMessage('Отзыв добавлен!', 'success');
+                }).catch(err => {
+                    showMessage(err.message, 'error');
+                });
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadSeries();
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            loadSeries();
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+            msgDiv.textContent = msg;
+            document.body.insertBefore(msgDiv, document.body.firstChild);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+
+        function logout() {
+            api.setToken(null);
+            window.location.href = '/login.html';
+        }
+
+        loadSeries();
+    </script>
+</body>
+</html>

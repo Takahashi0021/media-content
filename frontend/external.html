@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск фильмов - Media Content</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="/js/api.js"></script>
+    <script>
+        let currentPage = 1;
+
+        function checkAuth() {
+            if (!api.token) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function loadExternalSearch() {
+            if (!checkAuth()) return;
+
+            try {
+                const user = await api.getCurrentUser();
+
+                document.getElementById('app').innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>🌐 Поиск фильмов (OMDb API)</h1>
+                            <div class="nav">
+                                <a href="/index.html">Главная</a>
+                                <a href="/movies.html">Фильмы</a>
+                                <a href="/series.html">Сериалы</a>
+                                <a href="/favorites.html">Избранное</a>
+                                <a href="/reviews.html">Отзывы</a>
+                                <a href="/external.html" class="active">Поиск</a>
+                            </div>
+                            <div>
+                                <span style="margin-right: 15px;">👤 ${user.user.username}</span>
+                                <button class="logout-btn" onclick="logout()">Выйти</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>🔍 Поиск фильмов во внешнем API</h3>
+                            <div class="search-bar">
+                                <input type="text" id="searchQuery" placeholder="Введите название фильма..." onkeypress="handleKeyPress(event)">
+                                <button onclick="searchMovies()">Поиск</button>
+                            </div>
+                            <div id="results"></div>
+                            <div class="pagination" id="pagination" style="display: none;">
+                                <button onclick="prevPage()" id="prevBtn">◀ Назад</button>
+                                <span id="pageInfo"></span>
+                                <button onclick="nextPage()" id="nextBtn">Вперед ▶</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading external search:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function searchMovies() {
+            const query = document.getElementById('searchQuery').value;
+            if (!query) {
+                showMessage('Введите название фильма', 'error');
+                return;
+            }
+
+            currentPage = 1;
+            await performSearch(query, currentPage);
+        }
+
+        async function performSearch(query, page) {
+            try {
+                showLoading(true);
+                const results = await api.searchExternalMovies(query, page);
+                
+                const container = document.getElementById('results');
+                const pagination = document.getElementById('pagination');
+                const pageInfo = document.getElementById('pageInfo');
+                
+                if (!results.data || results.data.length === 0) {
+                    container.innerHTML = '<div class="message info">Ничего не найдено</div>';
+                    pagination.style.display = 'none';
+                    return;
+                }
+
+                container.innerHTML = results.data.map(movie => `
+                    <div class="movie-card" style="margin-bottom: 20px;">
+                        <div style="display: flex; gap: 20px;">
+                            <img src="${movie.Poster !== 'N/A' ? movie.Poster : 'https://via.placeholder.com/100x150'}" 
+                                 style="width: 100px; height: 150px; object-fit: cover;">
+                            <div style="flex: 1;">
+                                <h4>${movie.Title}</h4>
+                                <p>📅 ${movie.Year}</p>
+                                <p class="rating">⭐ ${movie.imdbRating || 'N/A'}</p>
+                                <div class="actions">
+                                    <button onclick="importMovie('${movie.Title}', '${movie.imdbRating}')">📥 Импортировать в БД</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                pagination.style.display = 'flex';
+                pageInfo.textContent = `Страница ${results.page}`;
+                
+            } catch (error) {
+                showMessage(error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function importMovie(title, rating) {
+            try {
+                const movie = {
+                    title: title,
+                    rating: parseFloat(rating) || 0,
+                    description: `Импортировано из OMDb API: ${title}`,
+                    release_year: new Date().getFullYear()
+                };
+                await api.createMovie(movie);
+                showMessage(`Фильм "${title}" импортирован!`, 'success');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                const query = document.getElementById('searchQuery').value;
+                performSearch(query, currentPage);
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            const query = document.getElementById('searchQuery').value;
+            performSearch(query, currentPage);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                searchMovies();
+            }
+        }
+
+        function showLoading(show) {
+            const container = document.getElementById('results');
+            if (show) {
+                container.innerHTML = '<div class="loading">⏳ Загрузка...</div>';
+            }
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+            msgDiv.textContent = msg;
+            document.body.insertBefore(msgDiv, document.body.firstChild);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+
+        function logout() {
+            api.setToken(null);
+            window.location.href = '/login.html';
+        }
+
+        loadExternalSearch();
+    </script>
+</body>
+</html>

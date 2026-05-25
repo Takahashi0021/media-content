@@ -33,6 +33,7 @@ services:
       JWT_SECRET: my-super-secret-key
       JWT_EXPIRE_HOURS: 24
       GIN_MODE: release
+      OMDB_API_KEY: ${OMDB_API_KEY}
     ports:
       - "8080:8080"
     depends_on:
@@ -41,17 +42,17 @@ services:
     networks:
       - media-network
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: media-pgadmin
+  nginx:
+    image: nginx:alpine
+    container_name: media-frontend
     restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "5050:80"
+      - "80:80"
     depends_on:
-      - postgres
+      - app
     networks:
       - media-network
 

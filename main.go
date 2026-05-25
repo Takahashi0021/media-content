@@ -8,23 +8,25 @@ import (
 	"media-content-api/models"
 	"media-content-api/routes"
 
+	"github.com/gin-contrib/cors"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	if _, err := os.Stat(".env"); err == nil {
-		if err := godotenv.Load(); err != nil {
-			log.Println("Warning: Error loading .env file")
-		}
-	}
+	godotenv.Load()
 
 	config.ConnectDatabase()
 
-	if err := config.DB.AutoMigrate(&models.User{}, &models.Movie{}, &models.Series{}); err != nil {
-		log.Printf("Warning: Auto migration error: %v", err)
-	}
+	config.DB.AutoMigrate(&models.User{}, &models.Movie{}, &models.Series{})
 
 	router := routes.SetupRouter()
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Media Content</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .auth-card {
+            background: white;
+            max-width: 400px;
+            width: 90%;
+            margin: 20px;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .auth-card h2 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .auth-card input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .auth-card button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .auth-card button:hover {
+            background: #5a67d8;
+        }
+
+        .auth-card button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .auth-card .link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .auth-card .link a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .auth-card .link a:hover {
+            text-decoration: underline;
+        }
+
+        .message {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h2>📝 Регистрация</h2>
+        <div id="message"></div>
+        <form onsubmit="handleRegister(event)">
+            <input type="text" id="username" placeholder="Имя пользователя" required autocomplete="username">
+            <input type="email" id="email" placeholder="Email" required autocomplete="email">
+            <input type="password" id="password" placeholder="Пароль (минимум 6 символов)" required autocomplete="new-password" minlength="6">
+            <button type="submit" id="registerBtn">Зарегистрироваться</button>
+        </form>
+        <div class="link">
+            Уже есть аккаунт? <a href="/login.html">Войти</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        async function register(username, email, password) {
+            const response = await fetch(`${API_BASE}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Ошибка регистрации');
+            }
+
+            return data;
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const registerBtn = document.getElementById('registerBtn');
+            const messageDiv = document.getElementById('message');
+
+            if (password.length < 6) {
+                showMessage('Пароль должен быть не менее 6 символов', 'error');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Регистрация...';
+
+            try {
+                const result = await register(username, email, password);
+                
+                if (result.token) {
+                    localStorage.setItem('token', result.token);
+                    
+                    showMessage('Регистрация успешна! Перенаправление...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 1000);
+                }
+            } catch (error) {
+                showMessage(error.message, 'error');
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Зарегистрироваться';
+            }
+        }
+
+        function showMessage(msg, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="message ${type}">${msg}</div>`;
+            
+            setTimeout(() => {
+                if (messageDiv.innerHTML) {
+                    messageDiv.innerHTML = '';
+                }
+            }, 3000);
+        }
+
+        if (localStorage.getItem('token')) {
+            window.location.href = '/index.html';
+        }
+    </script>
+</body>
+</html>

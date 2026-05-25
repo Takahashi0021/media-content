@@ -13,10 +13,10 @@ type Series struct {
 	ReleaseYear int            `json:"release_year"`
 	Seasons     int            `json:"seasons"`
 	Episodes    int            `json:"episodes"`
-	Rating      float64        `json:"rating"`
 	Genre       string         `json:"genre"`
 	Creator     string         `json:"creator"`
 	PosterURL   string         `json:"poster_url"`
+	CreatedBy   uint           `json:"created_by"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`

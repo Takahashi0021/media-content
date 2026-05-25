@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Избранное - Media Content</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="/js/api.js"></script>
+    <script>
+        function checkAuth() {
+            if (!api.token) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function loadFavorites() {
+            if (!checkAuth()) return;
+
+            try {
+                const user = await api.getCurrentUser();
+                const favorites = await api.getFavorites();
+                const movies = await api.getMovies();
+                const series = await api.getSeries();
+
+                const favoriteMovies = favorites
+                    .filter(f => f.movie_id)
+                    .map(f => ({ ...movies.find(m => m.id === f.movie_id), favoriteId: f.id }));
+                
+                const favoriteSeries = favorites
+                    .filter(f => f.series_id)
+                    .map(f => ({ ...series.find(s => s.id === f.series_id), favoriteId: f.id }));
+
+                document.getElementById('app').innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>❤️ Избранное</h1>
+                            <div class="nav">
+                                <a href="/index.html">Главная</a>
+                                <a href="/movies.html">Фильмы</a>
+                                <a href="/series.html">Сериалы</a>
+                                <a href="/favorites.html" class="active">Избранное</a>
+                                <a href="/reviews.html">Отзывы</a>
+                                <a href="/external.html">Поиск</a>
+                            </div>
+                            <div>
+                                <span style="margin-right: 15px;">👤 ${user.user.username}</span>
+                                <button class="logout-btn" onclick="logout()">Выйти</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>🎬 Избранные фильмы</h3>
+                            <div id="favoriteMovies" class="grid"></div>
+                        </div>
+
+                        <div class="card">
+                            <h3>📺 Избранные сериалы</h3>
+                            <div id="favoriteSeries" class="grid"></div>
+                        </div>
+                    </div>
+                `;
+
+                renderFavorites(favoriteMovies, 'movie');
+                renderFavorites(favoriteSeries, 'series');
+            } catch (error) {
+                console.error('Error loading favorites:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        function renderFavorites(items, type) {
+            const container = document.getElementById(type === 'movie' ? 'favoriteMovies' : 'favoriteSeries');
+            
+            if (items.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding:50px;">Нет избранных</p>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div class="${type === 'movie' ? 'movie-card' : 'series-card'}">
+                    <h4>${item.title}</h4>
+                    <p class="rating">⭐ ${item.rating || 'N/A'}</p>
+                    <p>${item.release_year || 'Н/Д'}</p>
+                    <div class="actions">
+                        <button class="danger" onclick="removeFromFavorites(${item.favoriteId})">🗑️ Удалить из избранного</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function removeFromFavorites(favoriteId) {
+            if (confirm('Удалить из избранного?')) {
+                try {
+                    await api.removeFavorite(favoriteId);
+                    showMessage('Удалено из избранного', 'success');
+                    loadFavorites();
+                } catch (error) {
+                    showMessage(error.message, 'error');
+                }
+            }
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+            msgDiv.textContent = msg;
+            document.body.insertBefore(msgDiv, document.body.firstChild);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+
+        function logout() {
+            api.setToken(null);
+            window.location.href = '/login.html';
+        }
+
+        loadFavorites();
+    </script>
+</body>
+</html>

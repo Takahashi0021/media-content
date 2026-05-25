@@ -19,7 +19,7 @@ type Claims struct {
 func GenerateToken(userID uint, username, email, role string) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default-secret-key"
+		secret = "my-super-secret-key"
 	}
 
 	expireHours := os.Getenv("JWT_EXPIRE_HOURS")
@@ -42,13 +42,18 @@ func GenerateToken(userID uint, username, email, role string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }
 
 func ValidateToken(tokenString string) (*Claims, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default-secret-key"
+		secret = "my-super-secret-key"
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {

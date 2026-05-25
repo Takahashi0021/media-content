@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали сериала - Media Content</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+        .header h1 { color: #667eea; font-size: 24px; }
+        .nav { display: flex; gap: 10px; flex-wrap: wrap; }
+        .nav a { text-decoration: none; color: #333; padding: 8px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav a:hover { background: #667eea; color: white; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .back-btn { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+        .series-detail { background: white; border-radius: 15px; overflow: hidden; margin-bottom: 30px; }
+        .series-header { display: flex; gap: 30px; padding: 30px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); flex-wrap: wrap; }
+        .series-poster { width: 300px; height: 450px; object-fit: cover; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .series-info { flex: 1; }
+        .series-title { font-size: 32px; color: #333; margin-bottom: 15px; }
+        .series-rating { font-size: 24px; color: #ffc107; margin-bottom: 15px; }
+        .series-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; color: #666; }
+        .series-description { margin-top: 20px; line-height: 1.6; color: #555; }
+        .section { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+        .section h3 { color: #667eea; margin-bottom: 15px; font-size: 22px; }
+        .reviews-list { display: flex; flex-direction: column; gap: 15px; }
+        .review-card { background: #f8f9fa; border-radius: 10px; padding: 15px; border-left: 4px solid #667eea; }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .review-user { font-weight: bold; color: #667eea; }
+        .review-rating { color: #ffc107; font-weight: bold; }
+        .review-comment { margin-top: 10px; color: #555; line-height: 1.5; }
+        .review-likes { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+        .like-btn { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .add-review-form { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #333; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .favorite-btn { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 15px; }
+        .favorite-btn.active { background: #ff6b81; }
+        .loading { text-align: center; padding: 50px; color: white; font-size: 18px; }
+        .message { padding: 12px; margin-bottom: 20px; border-radius: 5px; animation: slideIn 0.3s ease; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="app"><div class="loading">Загрузка...</div></div>
+    <script>
+        const API_BASE = '/api';
+        function getToken() { return localStorage.getItem('token'); }
+        function logout() { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+
+        async function request(method, endpoint, body = null) {
+            const token = getToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(`${API_BASE}${endpoint}`, { method, headers, body: body ? JSON.stringify(body) : null });
+            if (response.status === 401) { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Ошибка');
+            return data;
+        }
+
+        async function loadSeriesDetail() {
+            const token = getToken();
+            if (!token) { window.location.href = '/login.html'; return; }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const seriesId = urlParams.get('id');
+            if (!seriesId) { window.location.href = '/series.html'; return; }
+
+            try {
+                const userData = await request('GET', '/user');
+                const seriesData = await request('GET', `/series/${seriesId}`);
+                const series = seriesData.data;
+                
+                const reviewsData = await request('GET', `/reviews?series_id=${seriesId}&limit=50`);
+                const reviews = reviewsData.data || [];
+                
+                const avgRatingData = await request('GET', `/reviews/rating/average?series_id=${seriesId}`);
+                const avgRating = avgRatingData.average_rating || 0;
+                const totalReviews = avgRatingData.total_reviews || 0;
+                
+                let isFavorite = false;
+                try {
+                    const favorites = await request('GET', '/favorites');
+                    const favoritesList = favorites.data || favorites;
+                    isFavorite = favoritesList.some(f => f.series_id === parseInt(seriesId));
+                } catch (e) {}
+
+                const canEdit = (userData.user.id === series.created_by || userData.user.role === 'admin');
+
+                document.getElementById('app').innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>📺 Media Content API</h1>
+                            <div class="nav">
+                                <a href="/index.html">Главная</a>
+                                <a href="/movies.html">Фильмы</a>
+                                <a href="/series.html">Сериалы</a>
+                                <a href="/favorites.html">Избранное</a>
+                                <a href="/reviews.html">Отзывы</a>
+                                <a href="/external.html">Поиск</a>
+                            </div>
+                            <div class="user-info">
+                                <span>👤 ${userData.user.username}</span>
+                                <button class="logout-btn" onclick="logout()">Выйти</button>
+                            </div>
+                        </div>
+                        <button class="back-btn" onclick="history.back()">← Назад</button>
+                        <div class="series-detail">
+                            <div class="series-header">
+                                ${series.poster_url ? `<img class="series-poster" src="${series.poster_url}" alt="${series.title}">` : `<div class="series-poster" style="background:#ddd; display:flex; align-items:center; justify-content:center;">Нет постера</div>`}
+                                <div class="series-info">
+                                    <h1 class="series-title">${series.title}</h1>
+                                    <div class="series-rating">⭐ ${avgRating > 0 ? avgRating.toFixed(1) : 'Нет оценок'} (${totalReviews} отзывов)</div>
+                                    <div class="series-meta">
+                                        <span>📅 ${series.release_year || 'Н/Д'}</span>
+                                        <span>📺 ${series.seasons || 0} сезонов</span>
+                                        <span>🎬 ${series.episodes || 0} эпизодов</span>
+                                        <span>🎭 ${series.genre || 'Н/Д'}</span>
+                                        <span>✏️ ${series.creator || 'Н/Д'}</span>
+                                    </div>
+                                    <p class="series-description">${series.description || 'Описание отсутствует'}</p>
+                                    <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="toggleFavorite(${series.id})">${isFavorite ? '❤️ В избранном' : '♡ Добавить в избранное'}</button>
+                                    ${canEdit ? `
+                                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                                            <button class="btn btn-primary" onclick="location.href='/series-edit.html?id=${series.id}'">✏️ Редактировать</button>
+                                            <button class="btn btn-danger" onclick="deleteSeries(${series.id})">🗑️ Удалить</button>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h3>📝 Отзывы пользователей</h3>
+                            <div class="reviews-list">
+                                ${reviews.length > 0 ? reviews.map(r => `
+                                    <div class="review-card">
+                                        <div class="review-header">
+                                            <span class="review-user">👤 ${r.user?.username || 'Пользователь'}</span>
+                                            <span class="review-rating">⭐ ${r.rating}/10</span>
+                                        </div>
+                                        <div class="review-comment">${r.comment || 'Без комментария'}</div>
+                                        <div class="review-likes"><button class="like-btn" onclick="likeReview(${r.id})">👍 ${r.likes || 0}</button></div>
+                                    </div>
+                                `).join('') : '<p style="text-align:center; color:#666;">Пока нет отзывов. Будьте первым!</p>'}
+                            </div>
+                            <div class="add-review-form">
+                                <h4>✏️ Оставить отзыв</h4>
+                                <div class="form-group"><label>Оценка (1-10)</label><input type="number" id="rating" min="1" max="10" step="1"></div>
+                                <div class="form-group"><label>Комментарий</label><textarea id="comment" rows="3" placeholder="Поделитесь своим мнением..."></textarea></div>
+                                <button class="btn btn-primary" onclick="submitReview(${series.id})">Отправить отзыв</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) { console.error(error); }
+        }
+
+        async function toggleFavorite(seriesId) {
+            try {
+                const favorites = await request('GET', '/favorites');
+                const favoritesList = favorites.data || favorites;
+                const existing = favoritesList.find(f => f.series_id === seriesId);
+                if (existing) { await request('DELETE', `/favorites/${existing.id}`); showMessage('Удалено из избранного', 'success'); }
+                else { await request('POST', '/favorites', { series_id: seriesId }); showMessage('Добавлено в избранное', 'success'); }
+                loadSeriesDetail();
+            } catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        async function submitReview(seriesId) {
+            const rating = document.getElementById('rating').value;
+            const comment = document.getElementById('comment').value;
+            if (!rating || rating < 1 || rating > 10) { showMessage('Поставьте оценку от 1 до 10', 'error'); return; }
+            try {
+                await request('POST', '/reviews', { series_id: seriesId, rating: parseInt(rating), comment: comment });
+                showMessage('Отзыв добавлен!', 'success');
+                loadSeriesDetail();
+            } catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        async function likeReview(reviewId) {
+            try { await request('POST', `/reviews/${reviewId}/like`); showMessage('Лайк добавлен!', 'success'); loadSeriesDetail(); }
+            catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        async function deleteSeries(id) {
+            if (confirm('Удалить этот сериал? Это действие нельзя отменить.')) {
+                try { await request('DELETE', `/series/${id}`); showMessage('Сериал удалён', 'success'); setTimeout(() => { window.location.href = '/series.html'; }, 1000); }
+                catch (error) { showMessage(error.message, 'error'); }
+            }
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.createElement('div'); msgDiv.className = `message ${type}`; msgDiv.textContent = msg;
+            document.body.insertBefore(msgDiv, document.body.firstChild);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+
+        loadSeriesDetail();
+    </script>
+</body>
+</html>

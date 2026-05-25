@@ -12,10 +12,10 @@ type Movie struct {
 	Description string         `json:"description"`
 	ReleaseYear int            `json:"release_year"`
 	Duration    int            `json:"duration"`
-	Rating      float64        `json:"rating"`
 	Genre       string         `json:"genre"`
 	Director    string         `json:"director"`
 	PosterURL   string         `json:"poster_url"`
+	CreatedBy   uint           `json:"created_by"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`

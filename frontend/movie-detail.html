@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали фильма - Media Content</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+        .header h1 { color: #667eea; font-size: 24px; }
+        .nav { display: flex; gap: 10px; flex-wrap: wrap; }
+        .nav a { text-decoration: none; color: #333; padding: 8px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav a:hover { background: #667eea; color: white; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .back-btn { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+        .movie-detail { background: white; border-radius: 15px; overflow: hidden; margin-bottom: 30px; }
+        .movie-header { display: flex; gap: 30px; padding: 30px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); flex-wrap: wrap; }
+        .movie-poster { width: 300px; height: 450px; object-fit: cover; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .movie-info { flex: 1; }
+        .movie-title { font-size: 32px; color: #333; margin-bottom: 15px; }
+        .movie-rating { font-size: 24px; color: #ffc107; margin-bottom: 15px; }
+        .movie-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; color: #666; }
+        .movie-description { margin-top: 20px; line-height: 1.6; color: #555; }
+        .edit-mode { background: #fff3cd; border: 2px solid #ffc107; }
+        .edit-fields { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
+        .edit-fields input, .edit-fields textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .section { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+        .section h3 { color: #667eea; margin-bottom: 15px; font-size: 22px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .favorite-btn { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 15px; margin-right: 10px; }
+        .favorite-btn.active { background: #ff6b81; }
+        .reviews-list { display: flex; flex-direction: column; gap: 15px; max-height: 400px; overflow-y: auto; }
+        .review-card { background: #f8f9fa; border-radius: 10px; padding: 15px; border-left: 4px solid #667eea; }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .review-user { font-weight: bold; color: #667eea; }
+        .review-rating { color: #ffc107; font-weight: bold; }
+        .review-comment { margin-top: 10px; color: #555; line-height: 1.5; }
+        .review-likes { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+        .like-btn { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .add-review-form { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #333; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        .no-poster { width: 300px; height: 450px; background: #ddd; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 18px; color: #666; }
+        .message { padding: 12px; margin-bottom: 20px; border-radius: 5px; animation: slideIn 0.3s ease; position: fixed; top: 20px; right: 20px; z-index: 1000; min-width: 250px; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .carousel-container { position: relative; margin: 20px 0; }
+        .carousel { display: flex; overflow-x: auto; scroll-behavior: smooth; gap: 15px; padding: 20px; scrollbar-width: thin; }
+        .carousel-item { flex: 0 0 200px; text-align: center; cursor: pointer; }
+        .carousel-item img { width: 200px; height: 280px; object-fit: cover; border-radius: 10px; transition: transform 0.3s; }
+        .carousel-item img:hover { transform: scale(1.05); }
+        .carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 50%; font-size: 20px; z-index: 10; }
+        .carousel-btn.prev { left: 0; }
+        .carousel-btn.next { right: 0; }
+        .empty-state { text-align: center; padding: 40px; color: #666; }
+        .action-buttons { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <div id="app"><div class="loading">Загрузка...</div></div>
+    <script>
+        const API_BASE = '/api';
+        let isEditMode = false;
+        let currentMovie = null;
+
+        function getToken() { return localStorage.getItem('token'); }
+        function logout() { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+
+        async function request(method, endpoint, body = null) {
+            const token = getToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(`${API_BASE}${endpoint}`, { method, headers, body: body ? JSON.stringify(body) : null });
+            if (response.status === 401) { localStorage.removeItem('token'); window.location.href = '/login.html'; throw new Error('Не авторизован'); }
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Ошибка запроса');
+            return data;
+        }
+
+        function showMessage(msg, type) {
+            const existingMsg = document.querySelector('.message');
+            if (existingMsg) existingMsg.remove();
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+            msgDiv.textContent = msg;
+            document.body.appendChild(msgDiv);
+            setTimeout(() => msgDiv.remove(), 3000);
+        }
+
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+
+        async function loadMovieDetail() {
+            const token = getToken();
+            if (!token) { window.location.href = '/login.html'; return; }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const movieId = urlParams.get('id');
+            if (!movieId) { window.location.href = '/movies.html'; return; }
+
+            try {
+                const userData = await request('GET', '/user');
+                const movieData = await request('GET', `/movies/${movieId}`);
+                currentMovie = movieData.data;
+                const reviewsData = await request('GET', `/reviews?movie_id=${movieId}&limit=50`);
+                const reviews = reviewsData.data || [];
+                const avgRatingData = await request('GET', `/reviews/rating/average?movie_id=${movieId}`);
+                const avgRating = avgRatingData.average_rating || 0;
+                const totalReviews = avgRatingData.total_reviews || 0;
+
+                let isFavorite = false;
+                try {
+                    const favorites = await request('GET', '/favorites');
+                    const favoritesList = favorites.data || favorites;
+                    isFavorite = favoritesList.some(f => f.movie_id === parseInt(movieId));
+                } catch (e) {}
+
+                const allMovies = await request('GET', '/movies');
+                const similarMovies = (allMovies.data || allMovies).filter(m => m.id !== parseInt(movieId)).slice(0, 10);
+
+                const canEdit = (userData.user.id === currentMovie.created_by || userData.user.role === 'admin');
+
+                document.getElementById('app').innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>🎬 Media Content API</h1>
+                            <div class="nav">
+                                <a href="/index.html">Главная</a>
+                                <a href="/movies.html">Фильмы</a>
+                                <a href="/series.html">Сериалы</a>
+                                <a href="/favorites.html">Избранное</a>
+                                <a href="/reviews.html">Отзывы</a>
+                                <a href="/external.html">Поиск</a>
+                            </div>
+                            <div class="user-info">
+                                <span>👤 ${escapeHtml(userData.user.username)}</span>
+                                <button class="logout-btn" onclick="logout()">Выйти</button>
+                            </div>
+                        </div>
+                        <button class="back-btn" onclick="history.back()">← Назад</button>
+                        <div class="movie-detail ${isEditMode ? 'edit-mode' : ''}">
+                            <div class="movie-header">
+                                ${!isEditMode ? (
+                                    currentMovie.poster_url ? `<img class="movie-poster" src="${currentMovie.poster_url}" alt="${escapeHtml(currentMovie.title)}">` : `<div class="no-poster">🎬 Нет постера</div>`
+                                ) : ''}
+                                <div class="movie-info">
+                                    ${!isEditMode ? `
+                                        <h1 class="movie-title">${escapeHtml(currentMovie.title)}</h1>
+                                        <div class="movie-rating">⭐ ${avgRating > 0 ? avgRating.toFixed(1) : 'Нет оценок'} (${totalReviews} отзывов)</div>
+                                        <div class="movie-meta">
+                                            <span>📅 ${currentMovie.release_year || 'Н/Д'}</span>
+                                            <span>⏱️ ${currentMovie.duration || '?'} мин</span>
+                                            <span>🎭 ${escapeHtml(currentMovie.genre) || 'Н/Д'}</span>
+                                            <span>🎥 ${escapeHtml(currentMovie.director) || 'Н/Д'}</span>
+                                        </div>
+                                        <p class="movie-description">${escapeHtml(currentMovie.description) || 'Описание отсутствует'}</p>
+                                    ` : `
+                                        <div class="edit-fields">
+                                            <h3>✏️ Редактирование фильма</h3>
+                                            <input type="text" id="editTitle" placeholder="Название" value="${escapeHtml(currentMovie.title)}">
+                                            <textarea id="editDescription" placeholder="Описание" rows="4">${escapeHtml(currentMovie.description || '')}</textarea>
+                                            <input type="number" id="editReleaseYear" placeholder="Год выпуска" value="${currentMovie.release_year || ''}">
+                                            <input type="number" id="editDuration" placeholder="Длительность (мин)" value="${currentMovie.duration || ''}">
+                                            <input type="text" id="editGenre" placeholder="Жанр" value="${escapeHtml(currentMovie.genre || '')}">
+                                            <input type="text" id="editDirector" placeholder="Режиссёр" value="${escapeHtml(currentMovie.director || '')}">
+                                            <input type="text" id="editPosterUrl" placeholder="URL постера" value="${escapeHtml(currentMovie.poster_url || '')}">
+                                            <div class="action-buttons">
+                                                <button class="btn btn-success" onclick="saveMovie()">💾 Сохранить</button>
+                                                <button class="btn btn-secondary" onclick="cancelEdit()">❌ Отмена</button>
+                                            </div>
+                                        </div>
+                                    `}
+                                    <div class="action-buttons">
+                                        ${!isEditMode && canEdit ? `<button class="btn btn-warning" onclick="enableEditMode()">✏️ Редактировать</button>` : ''}
+                                        ${!isEditMode && canEdit ? `<button class="btn btn-danger" onclick="deleteMovie()">🗑️ Удалить</button>` : ''}
+                                        <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="toggleFavorite(${currentMovie.id})">${isFavorite ? '❤️ В избранном' : '♡ Добавить в избранное'}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ${!isEditMode ? `
+                            <div class="section">
+                                <h3>🎬 Похожие фильмы</h3>
+                                ${similarMovies.length > 0 ? `
+                                    <div class="carousel-container">
+                                        <button class="carousel-btn prev" onclick="scrollCarousel('similar', -1)">◀</button>
+                                        <div class="carousel" id="similarCarousel">
+                                            ${similarMovies.map(m => `
+                                                <div class="carousel-item" onclick="location.href='/movie-detail.html?id=${m.id}'">
+                                                    ${m.poster_url ? `<img src="${m.poster_url}" alt="${escapeHtml(m.title)}">` : `<div style="width:200px; height:280px; background:#ddd; border-radius:10px; display:flex; align-items:center; justify-content:center;">🎬</div>`}
+                                                    <p>${escapeHtml(m.title)}</p>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <button class="carousel-btn next" onclick="scrollCarousel('similar', 1)">▶</button>
+                                    </div>
+                                ` : '<div class="empty-state">Нет похожих фильмов</div>'}
+                            </div>
+                            <div class="section">
+                                <h3>📝 Отзывы пользователей</h3>
+                                <div class="reviews-list">
+                                    ${reviews.length > 0 ? reviews.map(r => `
+                                        <div class="review-card">
+                                            <div class="review-header">
+                                                <span class="review-user">👤 ${escapeHtml(r.user?.username || 'Пользователь')}</span>
+                                                <span class="review-rating">⭐ ${r.rating}/10</span>
+                                            </div>
+                                            <div class="review-comment">${escapeHtml(r.comment) || 'Без комментария'}</div>
+                                            <div class="review-links"><button class="like-btn" onclick="likeReview(${r.id})">👍 ${r.likes || 0}</button></div>
+                                        </div>
+                                    `).join('') : '<div class="empty-state">📭 Пока нет отзывов. Будьте первым!</div>'}
+                                </div>
+                                <div class="add-review-form">
+                                    <h4>✏️ Оставить отзыв</h4>
+                                    <div class="form-group"><label>Оценка (1-10)</label><input type="number" id="rating" min="1" max="10" step="1"></div>
+                                    <div class="form-group"><label>Комментарий</label><textarea id="comment" rows="3" placeholder="Поделитесь своим мнением..."></textarea></div>
+                                    <button class="btn btn-primary" onclick="submitReview(${currentMovie.id})">✏️ Отправить отзыв</button>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('app').innerHTML = `<div class="container"><div class="movie-detail"><div class="movie-header"><div class="movie-info"><h1>Ошибка</h1><p>${error.message}</p><button onclick="location.reload()">Обновить</button></div></div></div></div>`;
+            }
+        }
+
+        function enableEditMode() { isEditMode = true; loadMovieDetail(); }
+        function cancelEdit() { isEditMode = false; loadMovieDetail(); }
+
+        async function saveMovie() {
+            const updatedMovie = {
+                title: document.getElementById('editTitle').value,
+                description: document.getElementById('editDescription').value,
+                release_year: parseInt(document.getElementById('editReleaseYear').value) || 0,
+                duration: parseInt(document.getElementById('editDuration').value) || 0,
+                genre: document.getElementById('editGenre').value,
+                director: document.getElementById('editDirector').value,
+                poster_url: document.getElementById('editPosterUrl').value
+            };
+            if (!updatedMovie.title) { showMessage('Введите название фильма', 'error'); return; }
+            try {
+                await request('PUT', `/movies/${currentMovie.id}`, updatedMovie);
+                showMessage('Фильм успешно обновлён!', 'success');
+                isEditMode = false;
+                loadMovieDetail();
+            } catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        async function deleteMovie() {
+            if (confirm('Вы уверены, что хотите удалить этот фильм? Это действие нельзя отменить.')) {
+                try {
+                    await request('DELETE', `/movies/${currentMovie.id}`);
+                    showMessage('Фильм успешно удалён', 'success');
+                    setTimeout(() => { window.location.href = '/movies.html'; }, 1500);
+                } catch (error) { showMessage(error.message, 'error'); }
+            }
+        }
+
+        async function toggleFavorite(movieId) {
+            try {
+                const favorites = await request('GET', '/favorites');
+                const favoritesList = favorites.data || favorites;
+                const existing = favoritesList.find(f => f.movie_id === movieId);
+                if (existing) { await request('DELETE', `/favorites/${existing.id}`); showMessage('Удалено из избранного', 'success'); }
+                else { await request('POST', '/favorites', { movie_id: movieId }); showMessage('Добавлено в избранное', 'success'); }
+                loadMovieDetail();
+            } catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        async function submitReview(movieId) {
+            const rating = document.getElementById('rating').value;
+            const comment = document.getElementById('comment').value;
+            if (!rating || rating < 1 || rating > 10) { showMessage('Поставьте оценку от 1 до 10', 'error'); return; }
+            try {
+                await request('POST', '/reviews', { movie_id: movieId, rating: parseInt(rating), comment: comment });
+                showMessage('Отзыв добавлен!', 'success');
+                document.getElementById('rating').value = '';
+                document.getElementById('comment').value = '';
+                loadMovieDetail();
+            } catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        async function likeReview(reviewId) {
+            try { await request('POST', `/reviews/${reviewId}/like`); showMessage('Лайк добавлен!', 'success'); loadMovieDetail(); }
+            catch (error) { showMessage(error.message, 'error'); }
+        }
+
+        function scrollCarousel(carouselId, direction) {
+            const carousel = document.getElementById(`${carouselId}Carousel`);
+            if (carousel) { const scrollAmount = 220; carousel.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' }); }
+        }
+
+        loadMovieDetail();
+    </script>
+</body>
+</html>
